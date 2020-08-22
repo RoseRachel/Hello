@@ -1,36 +1,59 @@
-package com.example.firstapp
-
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.preference.PreferenceManager
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.hello.R
+import com.example.hello.ApiClient
+import com.example.hello.ApiInterface
+import com.example.hello.Course
+import com.example.hello.CoursesResponse
 import kotlinx.android.synthetic.main.activity_courses.*
+import kotlinx.android.synthetic.main.row_courses_name.*
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
-data class Courses(val course_id: Int, val course_name: String, val course_code: Int, val instructor:String, val description:String)
-
-
-class CourseActivity : AppCompatActivity() {
+class CoursesActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_course)
-
+        setContentView(R.layout.activity_courses)
+        var courseList = listOf<Course>(
+            Course("1", "Python", "PY 101", "James Neumann", "Python Intro"),
+            Course("2", "Android", "AND 201", "Anne Elson", "Android development training"),
+            Course("3", "Database", "DB 304", "Kamwe Wema", "Database administration and development"),
+            Course("4", "Network", "DIS 202", "Betty Crocker", "Netwok Config for modern apps")
+        )
         rvCourses.layoutManager = LinearLayoutManager(baseContext)
-        val coursesRecyclerViewAdapter = CoursesRecyclerViewAdapter(coursesList = listOf(
+        rvCourses.adapter = CoursesAdapter(courseList)
 
-            Courses(56,"Python",113,"James Mwai","Hardworking"),
-            Courses(56,"Kotlin",112,"John Owuor","Hardworking"),
-            Courses(56,"Javascript",111,"Purity Maina","Hardworking"),
-            Courses(56,"Html/Css",110,"Jeff Muthondu","Hardworking"),
-            Courses(56,"React",109,"Purity maina","Hardworking"),
-            Courses(56,"Navigating",108,"Vero Thamaini","Hardworking"),
-            Courses(56,"Proffessional development",107,"Rodgers Owoko","Hardworking"),
-            Courses(56,"Design",106,"Nyandia","Hardworking"),
-            Courses(56,"Entreprenuership",105,"Kelly Murungi","Hardworking"),
-            Courses(56,"Hardware Design",104,"Barre Yasin","Hardworking"),
-            Courses(56,"Hardware Electronics",103,"Barre Yasin","Hardworking")
+        fetchCourses()
+    }
 
+    fun fetchCourses() {
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(baseContext)
+        val accessToken = sharedPreferences.getString("ACCESS_TOKEN_KEY", "")
 
-        ))
-        rvCourses.adapter=coursesRecyclerViewAdapter
+        val apiClient = ApiClient.buildService(ApiInterface::class.java)
+        val coursesCall = apiClient.getCourses("Bearer " + accessToken)
+        coursesCall.enqueue(object : Callback<CoursesResponse> {
+            override fun onFailure(call: Call<CoursesResponse>, t: Throwable) {
+                Toast.makeText(baseContext, t.message, Toast.LENGTH_LONG).show()
+            }
+
+            override fun onResponse(
+                call: Call<CoursesResponse>,
+                response: Response<CoursesResponse>
+            ) {
+                if (response.isSuccessful) {
+                    var courseList = response.body()?.courses as List<Course>
+                    var coursesAdapter = CoursesAdapter(courseList)
+                    rvCourses.layoutManager = LinearLayoutManager(baseContext)
+                    rvCourses.adapter = coursesAdapter
+                } else {
+                    Toast.makeText(baseContext, response.errorBody().toString(), Toast.LENGTH_LONG)
+                        .show()
+                }
+            }
+        })
     }
 }
